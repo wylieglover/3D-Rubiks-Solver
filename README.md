@@ -1,5 +1,5 @@
 # 3D-Rubiks Cube
-3-D Rubik's cube using a 3D array (3x3x3) that can be rotated in 9 directions and updated
+3-D Rubik's cube using a 3D array (3x3x3) that can be rotated in 18 directions and updated
 
 ![image](https://github.com/wylieglover/3D-Rubiks/assets/70774631/a51f6e34-c5f7-4c1c-8831-ed08cec7cb0e)
 

@@ -4,6 +4,7 @@ from OpenGL.GL import *
 from OpenGL.GLUT import *
 from OpenGL.GLU import *
 import numpy as np
+import random
 
 # Key bindings for rotations
 rot_slice_map = {
@@ -24,27 +25,27 @@ colors = (
 )
 
 # Cube vertices
-vertices = (
+vertices = np.array([
     (1, -1, -1), (1,  1, -1), (-1,  1, -1), (-1, -1, -1),
     (1, -1,  1), (1,  1,  1), (-1, -1,  1), (-1,  1,  1)
-)
+], dtype=np.float32)
 
 # Cube edges for lines (3x3x3)
-edges = (
-    (0, 1),(0, 3),(0, 4),(2, 1),
-    (2, 3),(2, 7),(6, 3),(6, 4),
-    (6, 7),(5, 1),(5, 4),(5, 7)
-)
+edges = np.array([
+    (0, 1), (0, 3), (0, 4), (2, 1),
+    (2, 3), (2, 7), (6, 3), (6, 4),
+    (6, 7), (5, 1), (5, 4), (5, 7)
+], dtype=np.int32)
 
 # Cube surfaces for faces (3x3x3)
-surfaces = (
-    (0, 1, 2, 3), # Front
-    (3, 2, 7, 6), # Right
-    (6, 7, 5, 4), # Back
-    (4, 5, 1, 0), # Left
-    (1, 5, 7, 2), # Top
-    (4, 0, 3, 6)  # Bottom
-)
+surfaces = np.array([
+    (0, 1, 2, 3),  # Front
+    (3, 2, 7, 6),  # Right
+    (6, 7, 5, 4),  # Back
+    (4, 5, 1, 0),  # Left
+    (1, 5, 7, 2),  # Top
+    (4, 0, 3, 6)   # Bottom
+], dtype=np.int32)
 
 class Block():
     def __init__(self, id, n, scale):
@@ -77,29 +78,30 @@ class Block():
         return self.current_id[axis] == slice
     
     def draw(self, animate, angle, axis, slice, dir):
+        x, y, z = self.current_id
+        is_inside_block = (0 < x < self.n - 1) and (0 < y < self.n - 1) and (0 < z < self.n - 1)
+       
         glPushMatrix()
-        
-        glEnable(GL_LINE_SMOOTH)
-        glHint(GL_LINE_SMOOTH_HINT, GL_NICEST)
         
         if animate and self.isAffected(axis, slice, dir):
             glRotatef( angle*dir, *[1 if i==axis else 0 for i in range(3)] )
             
         glMultMatrixf(self.transformMat())
         
+        glBegin(GL_QUADS)
         for i, surface in enumerate(surfaces):
-            glBegin(GL_QUADS)
+    
             glColor3fv(colors[i])
             for vertex in surface:
                 glVertex3fv(vertices[vertex])
-            glEnd()
-
-            glColor3f(0, 0, 0)
-            glBegin(GL_LINES)
-            for edge in edges:
-                for vertex in edge:
-                    glVertex3fv(vertices[vertex])
-            glEnd()
+        glEnd()
+        
+        glColor3f(0, 0, 0)
+        glBegin(GL_LINES)
+        for edge in edges:
+            for vertex in edge:
+                glVertex3fv(vertices[vertex])
+        glEnd()
         
         glPopMatrix()    
 
@@ -107,26 +109,39 @@ class Cube():
     def __init__(self, n, scale):
         self.n = n
         cr = range(self.n)
+        self.colors_count = {color: 0 for color in colors} 
         self.cubes = [Block((x, y, z), self.n, scale) for x in cr for y in cr for z in cr]
     
     def get_blocks(self):
         return self.cubes
+    
+    def update(self, axis, slice, dir):
+        for block in self.cubes:
+            block.update(axis, slice, dir)
+
+    def scramble_cube(self, cube):
+        num_rotations = random.randint(20, 30)  # Number of rotations for scrambling
+        for _ in range(num_rotations):
+            axis = random.choice([0, 1, 2])  # Randomly choose axis (0 for x, 1 for y, 2 for z)
+            slice = random.randint(0, cube.n - 1)  # Randomly choose slice
+            direction = random.choice([-1, 1])  # Randomly choose direction (-1 for clockwise, 1 for counterclockwise)
+            cube.update(axis, slice, direction)
 
 def main():
     # Initialize pygame
     pygame.init()
     display = (800,600)
     pygame.display.set_mode(display, DOUBLEBUF|OPENGL)
-    clock = pygame.time.Clock()
    
     # Set perspective
     glEnable(GL_DEPTH_TEST) 
     glutInit()
     glMatrixMode(GL_PROJECTION)
-    gluPerspective(45, (display[0]/display[1]), 0.1, 50.0)
+    gluPerspective(45, (display[0] / display[1]), 1.0, 100.0)  # Adjust near and far planes
 
     # Initialize the cube
-    cubes = Cube(3, 1.5)
+    cubes = Cube(3, 1)
+    cubes.scramble_cube(cubes)
     
     rot_x = 0
     rot_y = 0
@@ -148,7 +163,7 @@ def main():
                     last_pos = event.pos
             if event.type == KEYDOWN:
                 if not animate and event.key in rot_slice_map:
-                    animate, action = True, rot_slice_map[event.key]    
+                    animate, action = True, rot_slice_map[event.key]  
             if event.type == pygame.MOUSEBUTTONUP:
                 if event.button == 1:  # Left mouse button
                     dragging = False
@@ -161,7 +176,7 @@ def main():
             
         glMatrixMode(GL_MODELVIEW)
         glLoadIdentity()
-        glTranslatef(0, 0, -40)
+        glTranslatef(0, 0, -30)
         glRotatef(rot_x, 1, 0, 0)
         glRotatef(rot_y, 0, 1, 0)
         
@@ -179,8 +194,6 @@ def main():
             animate_ang += 5
         
         pygame.display.flip()
-
-        clock.tick(60)  # Cap FPS at 60
 
 if __name__ == '__main__':
     main()

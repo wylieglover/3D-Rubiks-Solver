@@ -1,4 +1,4 @@
-# 3D Rubik's Cube
+# 3D Rubik's Cube Solver
 - 3D Rubik's Cube solver using heuristics and IDA* search algorithm
 - 18 possible rotational moves
 

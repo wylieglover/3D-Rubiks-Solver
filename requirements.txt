@@ -1,3 +1,5 @@
 pygame
-PyOpenGL
+pyopengl
+pyopengl_accelerate
+tqdm
 numpy

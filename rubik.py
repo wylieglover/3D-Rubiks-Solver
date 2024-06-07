@@ -9,6 +9,7 @@ import string
 from tqdm import tqdm
 import json
 import time
+
 # Convert directions to position
 def convert_directions_to_position(face1, face2, face3=None):
     face_changes = {

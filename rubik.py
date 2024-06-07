@@ -244,10 +244,10 @@ class Cube:
         def check(colors):
             assert len(colors) == 9
             return all(c == colors[0] for c in colors)
-        return (check([piece.colors[2] for piece in self._face(FRONT)]) and
-                check([piece.colors[2] for piece in self._face(BACK)]) and
-                check([piece.colors[1] for piece in self._face(UP)]) and
-                check([piece.colors[1] for piece in self._face(DOWN)]) and
-                check([piece.colors[0] for piece in self._face(LEFT)]) and
-                check([piece.colors[0] for piece in self._face(RIGHT)]))
+        return (check([block.colors[2] for block in self._face(FRONT)]) and
+                check([block.colors[2] for block in self._face(BACK)]) and
+                check([block.colors[1] for block in self._face(UP)]) and
+                check([block.colors[1] for block in self._face(DOWN)]) and
+                check([block.colors[0] for block in self._face(LEFT)]) and
+                check([block.colors[0] for block in self._face(RIGHT)]))
     

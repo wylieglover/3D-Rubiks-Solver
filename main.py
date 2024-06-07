@@ -10,7 +10,7 @@ import time
 from rubik import Cube
 from solver import RubiksCubeSolver, heuristic, rot_slice_map
 
-
+SCRAMBLE_MOVES = 10
 HEURISTIC_MAX_MOVES = 3
 INITIAL_STATE = "OOOOOOOOOYYYWWWGGGBBBYYYWWWGGGBBBYYYWWWGGGBBBRRRRRRRRR"
 
@@ -20,7 +20,7 @@ def main():
     pygame.init()
     display = (800,600)
     pygame.display.set_mode(display, DOUBLEBUF|OPENGL)
-    pygame.display.set_caption("Cubussi")
+    pygame.display.set_caption("Rubik's Cube")
 
     # Set perspective
     glEnable(GL_DEPTH_TEST) 
@@ -55,7 +55,7 @@ def main():
                 if not animate and event.key in rot_slice_map:
                     animate, action = True, rot_slice_map[event.key]  
                 if event.key == K_SPACE:
-                    actions = [random.choice(list(rot_slice_map.values())) for _ in range(10)] # Scrambles blocks   
+                    actions = [random.choice(list(rot_slice_map.values())) for _ in range(SCRAMBLE_MOVES)] # Scrambles blocks   
                 if event.key == K_s and not animate:
                     start_time = time.time()
                     print("Initializing solving algorithm...")

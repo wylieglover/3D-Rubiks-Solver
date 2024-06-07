@@ -1,14 +1,8 @@
-import pygame
-from pygame.locals import *
 from OpenGL.GL import *
 from OpenGL.GLUT import *
 from OpenGL.GLU import *
 import numpy as np
-import random
 import string
-from tqdm import tqdm
-import json
-import time
 
 # Convert directions to position
 def convert_directions_to_position(face1, face2, face3=None):
@@ -50,14 +44,6 @@ color_map = {
     BLUE: (0, 0, 1),
     None: (0, 0, 0)
 }
-
-# Key bindings for rotations
-rot_slice_map = {
-    K_1: (0, 0, 1), K_2: (0, 1, 1), K_3: (0, 2, 1), K_4: (1, 0, 1), K_5: (1, 1, 1),
-    K_6: (1, 2, 1), K_7: (2, 0, 1), K_8: (2, 1, 1), K_9: (2, 2, 1),
-    K_F1: (0, 0, -1), K_F2: (0, 1, -1), K_F3: (0, 2, -1), K_F4: (1, 0, -1), K_F5: (1, 1, -1),
-    K_F6: (1, 2, -1), K_F7: (2, 0, -1), K_F8: (2, 1, -1), K_F9: (2, 2, -1),
-}  
 
 # Cube vertices
 VERTICES: np.ndarray = np.array([
@@ -169,7 +155,7 @@ class Block():
                 glVertex3fv(VERTICES[vertex])
         glEnd()
 
-class Cube():
+class Cube:
     def __init__(self, n, scale, state=None):
         self.n = n
         self.scale = scale
@@ -255,191 +241,13 @@ class Cube():
             block.update(axis, slice, dir)
             
     def solved(self):
-        return self.state == self.solved_state()
+        def check(colors):
+            assert len(colors) == 9
+            return all(c == colors[0] for c in colors)
+        return (check([piece.colors[2] for piece in self._face(FRONT)]) and
+                check([piece.colors[2] for piece in self._face(BACK)]) and
+                check([piece.colors[1] for piece in self._face(UP)]) and
+                check([piece.colors[1] for piece in self._face(DOWN)]) and
+                check([piece.colors[0] for piece in self._face(LEFT)]) and
+                check([piece.colors[0] for piece in self._face(RIGHT)]))
     
-    def solved_state(self):
-        return "OOOOOOOOOYYYWWWGGGBBBYYYWWWGGGBBBYYYWWWGGGBBBRRRRRRRRR"  # Placeholder
-    
-class RubiksCubeSolver:
-    def __init__(self, heuristic=None, threshold=20):
-        self.heuristic = heuristic or {}
-        self.max_depth = threshold
-        self.threshold = threshold
-        self.min_threshold = None
-        self.moves = []
-
-    def search(self, state, g_score):
-        cube = Cube(3, 1, state=state)
-        if cube.solved():
-            return True
-        elif len(self.moves) >= self.threshold:
-            return False
-        
-        min_bound = float('inf')
-        best_action = None
-        for move in rot_slice_map.values():
-            new_cube = Cube(3, 1, state=state)
-            new_cube.apply_move(*move)
-            if new_cube.solved():
-                self.moves.append(move)
-                return True
-            
-            next_state = new_cube.get_color_list()
-            h_score = self.heuristic.get(next_state, self.max_depth)
-            f_score = g_score + h_score
-
-            if f_score < min_bound:
-                min_bound = f_score
-                best_action = [(next_state, move)]
-            elif f_score == min_bound:
-                if best_action is None:
-                    best_action = [(next_state, move)]
-                else:
-                    best_action.append((next_state, move))
-        
-        if best_action is not None:
-            if self.min_threshold is None or min_bound < self.min_threshold:
-                self.min_threshold = min_bound
-            next_action = random.choice(best_action)
-            self.moves.append(next_action[1])
-            status = self.search(next_action[0], g_score + 1)
-            if status: return status
-        return False
-    
-    def solve(self, state):
-        while True:
-            if self.search(state, 1):
-                return self.moves
-            self.moves = []
-            self.threshold = self.min_threshold
-        return []
-
-def heuristic(state, actions=rot_slice_map.values(), max_moves=4, heuristic=None):
-    if heuristic is None:
-        heuristic = {state: 0}
-    que = [(state, 0)]
-    node_count = sum([len(actions) ** (x + 1) for x in range(max_moves + 1)])
-    with tqdm(total=node_count, desc='Heuristic DB') as pbar:
-        while True:
-            if not que:
-                break
-            s, d = que.pop()
-            if d > max_moves:
-                continue
-            for move in actions: 
-                new_cube = Cube(3, 1, state=s) 
-                new_cube.apply_move(*move) 
-                new_state = new_cube.get_color_list()
-                if new_state not in heuristic or heuristic[new_state] > d + 1:
-                    heuristic[new_state] = d + 1
-                que.append((new_state, d + 1))
-                pbar.update(1)
-    return heuristic
-
-# Main loop
-def main():
-    # Initialize pygame
-    pygame.init()
-    display = (800,600)
-    pygame.display.set_mode(display, DOUBLEBUF|OPENGL)
-    pygame.display.set_caption("Cubussi")
-
-    # Set perspective
-    glEnable(GL_DEPTH_TEST) 
-    glutInit()
-    glMatrixMode(GL_PROJECTION)
-    gluPerspective(45, (display[0] / display[1]), 1.0, 100.0)
-    
-    # Initialize Rubiks Cube
-    cube = Cube(3, 1, "OOOOOOOOOYYYWWWGGGBBBYYYWWWGGGBBBYYYWWWGGGBBBRRRRRRRRR")
-
-    # Variables for rotating and moving with mouse
-    rot_x = 0
-    rot_y = 0
-    dragging = False
-    last_pos = None
-    animate = False
-    animate_ang = 0
-    action = (0, 0, 1)
-    actions = []
-
-    # Game loop
-    while True:
-        for event in pygame.event.get():
-            if event.type == QUIT:
-                pygame.quit()
-                sys.exit()
-            if event.type == pygame.MOUSEBUTTONDOWN:
-                if event.button == 1:  # Left mouse button
-                    dragging = True
-                    last_pos = event.pos
-            if event.type == KEYDOWN:
-                if not animate and event.key in rot_slice_map:
-                    animate, action = True, rot_slice_map[event.key]  
-                if event.key == K_SPACE:
-                    actions = [random.choice(list(rot_slice_map.values())) for _ in range(5)] # Scrambles blocks   
-                if event.key == K_s and not animate:
-                    start_time = time.time()
-                    print("Initializing solving algorithm...")
-                    if os.path.exists('heuristic.json'):
-                        print("Heuristics found locally...")
-                        with open('heuristic.json') as f:
-                            h_db = json.load(f)
-                    else:
-                        print("Gathering heuristics...")
-                        h_db = heuristic(cube.get_color_list())
-                        print("Generating JSON file...")
-                        with open('heuristic.json', 'w', encoding='utf-8') as f:
-                            json.dump(
-                                h_db,
-                                f,
-                                ensure_ascii=False,
-                                indent=4
-                            )
-                        print("JSON file generated!")   
-                    solver = RubiksCubeSolver(h_db)
-                    print("Searching for moves...")
-                    actions = solver.solve(cube.get_color_list())
-                    if actions:
-                        print("Moves to solve:", actions)
-                    else:
-                        print("Solving cube filed: cube already solved.")
-                    elapsed_time = round(time.time() - start_time, 2)
-                    print("Time taken to solve:", elapsed_time, "seconds\n")
-            if event.type == pygame.MOUSEBUTTONUP:
-                if event.button == 1:
-                    dragging = False
-            if event.type == pygame.MOUSEMOTION:
-                if dragging:
-                    dx, dy = event.pos[0] - last_pos[0], event.pos[1] - last_pos[1]
-                    rot_x += dy * 0.1
-                    rot_y += dx * 0.1
-                    last_pos = event.pos
-            
-        glMatrixMode(GL_MODELVIEW)
-        glLoadIdentity()
-        glTranslatef(0, 0, -20)
-        glRotatef(rot_x, 1, 0, 0)
-        glRotatef(rot_y, 0, 1, 0)
-        glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT)
-        
-        if not animate and actions:
-            animate, animate_ang = True, 0
-            action = actions.pop(0)
-        
-        if animate:
-            if animate_ang >= 90:
-                for block in cube.get_blocks():
-                    block.update(*action)
-                animate, animate_ang = False, 0
-                
-        for block in cube.get_blocks():
-            block.draw(animate, animate_ang, *action)
-        if animate:
-            animate_ang += 5
-        pygame.display.flip()
-
-if __name__ == '__main__':
-    main()
-    pygame.quit()
-    quit()
